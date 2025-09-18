@@ -16,11 +16,16 @@ export class AvailablePlacesComponent {
   places = signal<Place[] | undefined>(undefined);
   private destroyRef = inject(DestroyRef);
   private httpClient =inject(HttpClient);
+  isFetching = false;
 
   ngOnInit() {
-    const subscription = this.httpClient.get(`http://localhost:3000/places`).subscribe({
+    this.isFetching = true;
+    const subscription = this.httpClient.get<{places: Place[]}>(`http://localhost:3000/places`).subscribe({
       next : (resData) => {
-        console.log(resData)
+        this.places.set(resData.places);
+      },
+      complete: () => {
+        this.isFetching = false;
       }
     })
     
