@@ -39,17 +39,31 @@ app.get("/user-places", async (req, res) => {
 app.put("/user-places", async (req, res) => {
   const placeId = req.body.placeId;
 
+  // Validate input early
+  if (typeof placeId !== "string" || placeId.trim().length === 0) {
+    return res.status(400).json({ message: "Invalid placeId" });
+  }
+
   const fileContent = await fs.readFile("./data/places.json");
   const placesData = JSON.parse(fileContent);
 
   const place = placesData.find((place) => place.id === placeId);
+
+  // If the place does not exist, return 404
+  if (!place) {
+    return res.status(404).json({ message: "Place not found" });
+  }
 
   const userPlacesFileContent = await fs.readFile("./data/user-places.json");
   const userPlacesData = JSON.parse(userPlacesFileContent);
 
   let updatedUserPlaces = userPlacesData;
 
-  if (!userPlacesData.some((p) => p.id === place.id)) {
+  if (!Array.isArray(userPlacesData)) {
+    updatedUserPlaces = [];
+  }
+
+  if (!updatedUserPlaces.some((p) => p.id === place.id)) {
     updatedUserPlaces = [...userPlacesData, place];
   }
 
