@@ -2,8 +2,7 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Place } from '../place.model';
 import { PlacesComponent } from '../places.component';
 import { PlacesContainerComponent } from '../places-container/places-container.component';
-import { HttpClient } from '@angular/common/http';
-import { catchError, throwError, map } from 'rxjs';
+import { PlacesService } from '../places.service';
 
 @Component({
   selector: 'app-available-places',
@@ -15,18 +14,14 @@ import { catchError, throwError, map } from 'rxjs';
 export class AvailablePlacesComponent {
   places = signal<Place[] | undefined>(undefined);
   private destroyRef = inject(DestroyRef);
-  private httpClient = inject(HttpClient);
+  private backendClient = inject(PlacesService);
   isFetching = false;
   error = signal(' ');
 
   ngOnInit() {
     this.isFetching = true;
-    const subscription = this.httpClient
-      .get<{ places: Place[] }>(`http://localhost:3000/places`)
-      .pipe(
-        map((resData) => resData.places),
-        catchError(() => throwError(() => new Error('Failed to fetch places')))
-      )
+    const subscription = this.backendClient
+      .loadAvailablePlaces()
       .subscribe({
         next: (resData) => {
           this.places.set(resData);
@@ -47,8 +42,8 @@ export class AvailablePlacesComponent {
   }
 
   onSelectPlace(selectedPlace: Place) {
-    this.httpClient.put(`http://localhost:3000/user-places`, {
-      placeId:selectedPlace.id }).subscribe({
+    this.backendClient.addPlaceToUserPlaces(selectedPlace.id)
+    .subscribe({
         next: () => {
           console.log('Place added to user places');
         }
