@@ -1,9 +1,9 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
-
 import { Place } from '../place.model';
 import { PlacesComponent } from '../places.component';
 import { PlacesContainerComponent } from '../places-container/places-container.component';
 import { HttpClient } from '@angular/common/http';
+import { catchError, throwError, map } from 'rxjs';
 
 @Component({
   selector: 'app-available-places',
@@ -15,23 +15,33 @@ import { HttpClient } from '@angular/common/http';
 export class AvailablePlacesComponent {
   places = signal<Place[] | undefined>(undefined);
   private destroyRef = inject(DestroyRef);
-  private httpClient =inject(HttpClient);
+  private httpClient = inject(HttpClient);
   isFetching = false;
+  error = signal(' ');
 
   ngOnInit() {
     this.isFetching = true;
-    const subscription = this.httpClient.get<{places: Place[]}>(`http://localhost:3000/places`).subscribe({
-      next : (resData) => {
-        this.places.set(resData.places);
-      },
-      complete: () => {
-        this.isFetching = false;
-      }
-    })
-    
+    const subscription = this.httpClient
+      .get<{ places: Place[] }>(`http://localhost:3000/places`)
+      .pipe(
+        map((resData) => resData.places),
+        catchError(() => throwError(() => new Error('Failed to fetch places')))
+      )
+      .subscribe({
+        next: (resData) => {
+          this.places.set(resData);
+        },
+        complete: () => {
+          this.isFetching = false;
+        },
+        error: (error) => {
+          this.error.set(error.message);
+          this.isFetching = false;
+        },
+      });
+
     this.destroyRef.onDestroy(() => {
       subscription.unsubscribe();
     });
   }
-
 }
